@@ -1,0 +1,442 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Аналитика посещаемости</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .analytics-container {
+            padding: 20px 0;
+        }
+        .period-selector {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .period-btn {
+            padding: 8px 16px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+            .period-btn:hover {
+                background: #f0f0f0;
+                border-color: #667eea;
+            }
+
+            .period-btn.active {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border-color: transparent;
+            }
+        .analytics-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .period-selector {
+            display: flex;
+            gap: 10px;
+        }
+
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .analytics-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+            .analytics-card .number {
+                font-size: 2.5rem;
+                font-weight: bold;
+                color: #667eea;
+                margin: 10px 0;
+            }
+
+        .hourly-chart {
+            display: flex;
+            align-items: flex-end;
+            height: 200px;
+            gap: 5px;
+            margin-top: 20px;
+        }
+
+        .hour-bar {
+            flex: 1;
+            background: linear-gradient(to top, #667eea, #764ba2);
+            min-height: 2px;
+            border-radius: 3px 3px 0 0;
+            transition: height 0.3s;
+            position: relative;
+        }
+
+            .hour-bar:hover {
+                opacity: 0.8;
+            }
+
+            .hour-bar::after {
+                content: attr(data-count);
+                position: absolute;
+                top: -25px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #333;
+                color: white;
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-size: 12px;
+                white-space: nowrap;
+                opacity: 0;
+                transition: opacity 0.3s;
+                pointer-events: none;
+            }
+
+            .hour-bar:hover::after {
+                opacity: 1;
+            }
+
+        .hour-label {
+            text-align: center;
+            font-size: 10px;
+            margin-top: 5px;
+            color: #666;
+        }
+
+        .sources-list {
+            list-style: none;
+            padding: 0;
+        }
+
+            .sources-list li {
+                display: flex;
+                justify-content: space-between;
+                padding: 8px 0;
+                border-bottom: 1px solid #f0f0f0;
+            }
+
+            .sources-list .count {
+                font-weight: bold;
+                color: #667eea;
+            }
+        .period-selector {
+            justify-content: center;
+        }
+        @media (max-width: 768px) {
+            .hourly-chart {
+                height: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <a href="/">TechMarket</a>
+            </div>
+            <nav class="nav">
+                <ul>
+                    <li><a href="/">Главная</a></li>
+                    <li><a href="/catalog.html">Каталог</a></li>
+                    <li><a href="/cart.html">Корзина <span id="cart-count">0</span></a></li>
+                    <li><a href="/account.html">Личный кабинет</a></li>
+                    <li><a href="/statistics.html">Статистика</a></li>
+                    <li><a href="/analytics.html" class="active">Аналитика</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container analytics-container">
+            <div class="analytics-header">
+                <h1>Аналитика посещаемости</h1>
+                <div class="period-selector">
+                    <button class="period-btn" data-period="all">За всё время</button>
+                    <button class="period-btn" data-period="year">Год</button>
+                    <button class="period-btn" data-period="month">Месяц</button>
+                    <button class="period-btn active" data-period="week">Неделя</button>
+                    <button class="period-btn" data-period="day">День</button>
+                </div>
+            </div>
+
+            <div id="analytics-content">
+                <div class="text-center">Загрузка аналитики...</div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 TechMarket. Все права защищены.</p>
+            <p>Мы используем cookies для сбора статистики посещаемости</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const analyticsContent = document.getElementById('analytics-content');
+            const periodBtns = document.querySelectorAll('.period-btn');
+            let currentPeriod = 'day';
+
+            periodBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    periodBtns.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentPeriod = this.dataset.period;
+                    loadAnalytics();
+                });
+            });
+
+            async function loadAnalytics() {
+                try {
+                    analyticsContent.innerHTML = '<div class="text-center">Загрузка аналитики...</div>';
+
+                    // Проверка авторизации
+                    const authResponse = await fetch('/api/check-auth');
+                    const authData = await authResponse.json();
+
+                    if (!authData.authenticated) {
+                        analyticsContent.innerHTML = `
+                <div class="alert alert-info">
+                    <h2>Для просмотра аналитики необходимо авторизоваться</h2>
+                    <a href="/account.html" class="btn">Войти в личный кабинет</a>
+                </div>
+            `;
+                        return;
+                    }
+
+                    // Загружаем данные с учетом периода
+                    let visitsUrl = `/api/analytics/visits?period=${currentPeriod}`;
+                    let salesUrl = `/api/analytics/sales?period=${currentPeriod}`;
+
+                    // Для периода "all" используем "year" (или можно сделать отдельную обработку)
+                    if (currentPeriod === 'all') {
+                        visitsUrl = '/api/analytics/visits?period=year';
+                        salesUrl = '/api/analytics/sales?period=year';
+                    }
+
+                    const [visits, sales] = await Promise.all([
+                        fetch(visitsUrl).then(r => r.json()),
+                        fetch(salesUrl).then(r => r.json())
+                    ]);
+
+                    renderAnalytics(visits, sales);
+
+                } catch (error) {
+                    console.error('Ошибка загрузки аналитики:', error);
+                    analyticsContent.innerHTML = '<div class="alert alert-error">Ошибка загрузки аналитики</div>';
+                }
+            }
+            function renderAnalytics(visits, sales) {
+                // Находим максимальное значение для графика
+                const maxVisits = Math.max(...visits.hourly, 1);
+
+                // Сортируем источники
+                const sortedReferrers = Object.entries(visits.referrers || {})
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 10);
+
+                // Сортируем страницы
+                const sortedPages = Object.entries(visits.page_views || {})
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 10);
+
+                // Формируем HTML
+                let html = `
+                    <!-- Основные метрики -->
+                    <div class="analytics-grid">
+                        <div class="analytics-card">
+                            <div>Всего визитов</div>
+                            <div class="number">${visits.total_visits || 0}</div>
+                        </div>
+
+                        <div class="analytics-card">
+                            <div>Уникальные посетители</div>
+                            <div class="number">${visits.unique_visitors || 0}</div>
+                        </div>
+
+                        <div class="analytics-card">
+                            <div>Оформлено заказов</div>
+                            <div class="number">${sales.total_checkouts || 0}</div>
+                        </div>
+
+                        <div class="analytics-card">
+                            <div>Успешных покупок</div>
+                            <div class="number">${sales.successful_orders || 0}</div>
+                        </div>
+
+                        <div class="analytics-card">
+                            <div>Конверсия</div>
+                            <div class="number">
+                                ${visits.total_visits ?
+                                    ((sales.successful_orders / visits.total_visits) * 100).toFixed(2) : 0}%
+                            </div>
+                        </div>
+
+                        <div class="analytics-card">
+                            <div>Просмотров страниц</div>
+                            <div class="number">${Object.values(visits.page_views || {}).reduce((a, b) => a + b, 0)}</div>
+                        </div>
+                    </div>
+
+                    <!-- Почасовая активность -->
+                    <div class="chart-container" style="margin-bottom: 30px;">
+                        <div class="chart-title">Активность по часам</div>
+                        <div class="hourly-chart">
+                `;
+
+                // График по часам
+                for (let i = 0; i < 24; i++) {
+                    const count = visits.hourly[i] || 0;
+                    const height = maxVisits ? (count / maxVisits) * 100 : 0;
+                    html += `
+                        <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+                            <div class="hour-bar" style="height: ${height}%;" data-count="${count}"></div>
+                            <div class="hour-label">${i}:00</div>
+                        </div>
+                    `;
+                }
+
+                html += `
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+                        <!-- Источники трафика -->
+                        <div class="chart-container">
+                            <div class="chart-title">Источники переходов</div>
+                            <ul class="sources-list">
+                `;
+
+                if (sortedReferrers.length > 0) {
+                    sortedReferrers.forEach(([source, count]) => {
+                        const percent = visits.total_visits ? ((count / visits.total_visits) * 100).toFixed(1) : 0;
+                        html += `
+                            <li>
+                                <span>${source === 'direct' ? 'Прямые переходы' : source}</span>
+                                <span class="count">${count} (${percent}%)</span>
+                            </li>
+                        `;
+                    });
+                } else {
+                    html += '<li class="text-center">Нет данных</li>';
+                }
+
+                html += `
+                            </ul>
+                        </div>
+
+                        <!-- Браузеры -->
+                        <div class="chart-container">
+                            <div class="chart-title">Браузеры посетителей</div>
+                            <ul class="sources-list">
+                `;
+
+                if (visits.browsers && Object.keys(visits.browsers).length > 0) {
+                    Object.entries(visits.browsers).forEach(([browser, count]) => {
+                        const percent = visits.total_visits ? ((count / visits.total_visits) * 100).toFixed(1) : 0;
+                        html += `
+                            <li>
+                                <span>${browser}</span>
+                                <span class="count">${count} (${percent}%)</span>
+                            </li>
+                        `;
+                    });
+                } else {
+                    html += '<li class="text-center">Нет данных</li>';
+                }
+
+                html += `
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Популярные страницы -->
+                    <div class="stats-table">
+                        <div style="padding: 20px; border-bottom: 1px solid #e0e0e0;">
+                            <h2 style="margin: 0;">Популярные страницы</h2>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Страница</th>
+                                    <th>Просмотров</th>
+                                    <th>%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                if (sortedPages.length > 0) {
+                    sortedPages.forEach(([page, count]) => {
+                        const percent = visits.total_visits ? ((count / visits.total_visits) * 100).toFixed(1) : 0;
+                        html += `
+                            <tr>
+                                <td>${page || '/'}</td>
+                                <td><strong>${count}</strong></td>
+                                <td>${percent}%</td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    html += '<tr><td colspan="3" class="text-center">Нет данных</td></tr>';
+                }
+
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Информация о cookies -->
+                    <div class="alert alert-info" style="margin-top: 30px;">
+                        <h3>🍪 Информация о cookies</h3>
+                        <p>Для сбора статистики мы используем следующие cookies:</p>
+                        <ul>
+                            <li><strong>visit_id</strong> - уникальный идентификатор сессии (срок действия: 1 год)</li>
+                            <li><strong>connect.sid</strong> - идентификатор сессии авторизации</li>
+                        </ul>
+                        <p>Все данные анонимизированы и используются только для анализа посещаемости.</p>
+                    </div>
+                `;
+
+                analyticsContent.innerHTML = html;
+            }
+
+            // Обновление счетчика корзины
+            async function updateCartCount() {
+                try {
+                    const response = await fetch('/api/cart');
+                    if (response.ok) {
+                        const cart = await response.json();
+                        document.getElementById('cart-count').textContent = cart.count;
+                    }
+                } catch (error) {
+                    console.error('Ошибка обновления счетчика:', error);
+                }
+            }
+
+            loadAnalytics();
+            updateCartCount();
+        });
+    </script>
+</body>
+</html>

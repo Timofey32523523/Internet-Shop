@@ -1,0 +1,258 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Оформление заказа</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .checkout-container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
+        }
+
+        .checkout-form {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .order-summary {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            height: fit-content;
+            position: sticky;
+            top: 100px;
+        }
+
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .summary-total {
+            display: flex;
+            justify-content: space-between;
+            padding: 20px 0;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        @media (max-width: 768px) {
+            .checkout-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <a href="/">TechMarket</a>
+            </div>
+            <nav class="nav">
+                <ul>
+                    <li><a href="/">Главная</a></li>
+                    <li><a href="/catalog.html">Каталог</a></li>
+                    <li><a href="/cart.html">Корзина <span id="cart-count">0</span></a></li>
+                    <li><a href="/account.html">Личный кабинет</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <h1 style="margin-bottom: 30px;">Оформление заказа</h1>
+
+            <div id="checkout-content">
+                <div class="text-center">Загрузка...</div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 TechMarket. Все права защищены.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            const checkoutContent = document.getElementById('checkout-content');
+
+            // Проверка авторизации
+            const authResponse = await fetch('/api/check-auth');
+            const authData = await authResponse.json();
+
+            if (!authData.authenticated) {
+                checkoutContent.innerHTML = `
+                    <div class="empty-cart">
+                        <h2>Для оформления заказа необходимо войти</h2>
+                        <a href="/account.html" class="btn">Войти в личный кабинет</a>
+                    </div>
+                `;
+                return;
+            }
+
+            // Загрузка корзины
+            try {
+                const cartResponse = await fetch('/api/cart');
+
+                if (!cartResponse.ok) {
+                    throw new Error('Ошибка загрузки корзины');
+                }
+
+                const cart = await cartResponse.json();
+                document.getElementById('cart-count').textContent = cart.count;
+
+                if (cart.items.length === 0) {
+                    checkoutContent.innerHTML = `
+                        <div class="empty-cart">
+                            <h2>Корзина пуста</h2>
+                            <p>Добавьте товары в корзину перед оформлением заказа</p>
+                            <a href="/catalog.html" class="btn">Перейти в каталог</a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Загрузка профиля пользователя
+                const profileResponse = await fetch('/api/user/profile');
+                const profile = await profileResponse.json();
+
+                // Формируем HTML для оформления заказа
+                let summaryHtml = '';
+                cart.items.forEach(item => {
+                    summaryHtml += `
+                        <div class="summary-item">
+                            <span>${item.name} x ${item.quantity}</span>
+                            <span>${parseFloat(item.total).toLocaleString()} ₽</span>
+                        </div>
+                    `;
+                });
+
+                checkoutContent.innerHTML = `
+                    <div class="checkout-container">
+                        <div class="checkout-form">
+                            <h2 style="margin-bottom: 20px;">Данные получателя</h2>
+
+                            <form id="order-form">
+                                <div class="form-group">
+                                    <label for="firstName">Имя *</label>
+                                    <input type="text" id="firstName" class="form-control" value="${profile.first_name || ''}" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="lastName">Фамилия *</label>
+                                    <input type="text" id="lastName" class="form-control" value="${profile.last_name || ''}" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="phone">Телефон *</label>
+                                    <input type="tel" id="phone" class="form-control" value="${profile.phone || ''}" placeholder="+7 (999) 123-45-67" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="email">Email *</label>
+                                    <input type="email" id="email" class="form-control" value="${profile.email || ''}" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="address">Адрес доставки *</label>
+                                    <textarea id="address" class="form-control" rows="3" placeholder="Город, улица, дом, квартира" required>${profile.address || ''}</textarea>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="paymentMethod">Способ оплаты *</label>
+                                    <select id="paymentMethod" class="form-control" required>
+                                        <option value="">Выберите способ оплаты</option>
+                                        <option value="card">Банковской картой онлайн</option>
+                                        <option value="cash">Наличными при получении</option>
+                                        <option value="sbp">СБП (Система быстрых платежей)</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="comment">Комментарий к заказу</label>
+                                    <textarea id="comment" class="form-control" rows="3" placeholder="Дополнительная информация"></textarea>
+                                </div>
+
+                                <button type="submit" class="btn" style="width: 100%; padding: 15px; font-size: 1.2rem;">
+                                    Подтвердить заказ
+                                </button>
+                            </form>
+                        </div>
+
+                        <div class="order-summary">
+                            <h3 style="margin-bottom: 20px;">Ваш заказ</h3>
+                            ${summaryHtml}
+                            <div class="summary-total">
+                                <span>Итого:</span>
+                                <span>${cart.total.toLocaleString()} ₽</span>
+                            </div>
+
+                            <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                                <p><strong>Доставка:</strong> Бесплатно</p>
+                                <p><small>Срок доставки: 2-5 рабочих дней</small></p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Обработка отправки формы
+                document.getElementById('order-form').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+
+                    const formData = {
+                        shippingAddress: document.getElementById('address').value,
+                        paymentMethod: document.getElementById('paymentMethod').value,
+                        comment: document.getElementById('comment').value
+                    };
+
+                    // Проверка заполнения обязательных полей
+                    if (!formData.shippingAddress || !formData.paymentMethod) {
+                        alert('Пожалуйста, заполните все обязательные поля');
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch('/api/orders/create', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(formData),
+                        });
+
+                        const result = await response.json();
+
+                        if (response.ok) {
+                            // Успешное создание заказа
+                            alert(`Заказ №${result.orderNumber} успешно оформлен!`);
+                            window.location.href = '/account.html?tab=orders';
+                        } else {
+                            alert(result.error || 'Ошибка при оформлении заказа');
+                        }
+                    } catch (error) {
+                        console.error('Ошибка:', error);
+                        alert('Ошибка при оформлении заказа');
+                    }
+                });
+
+            } catch (error) {
+                console.error('Ошибка:', error);
+                checkoutContent.innerHTML = '<div class="alert alert-error">Ошибка загрузки данных</div>';
+            }
+        });
+    </script>
+</body>
+</html>

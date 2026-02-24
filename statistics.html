@@ -1,0 +1,525 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Статистика продаж</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .stats-container {
+            padding: 20px 0;
+        }
+
+        .stats-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .period-selector {
+            display: flex;
+            gap: 10px;
+        }
+
+        .period-btn {
+            padding: 8px 16px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+            .period-btn.active {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border-color: transparent;
+            }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s;
+        }
+
+            .stat-card:hover {
+                transform: translateY(-5px);
+            }
+
+        .stat-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .charts-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .chart-title {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .stats-table {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+            .stats-table table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+
+            .stats-table th {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                text-align: left;
+            }
+
+            .stats-table td {
+                padding: 12px 15px;
+                border-bottom: 1px solid #e0e0e0;
+            }
+
+            .stats-table tr:hover {
+                background-color: #f8f9fa;
+            }
+
+        .positive {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .negative {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        @media (max-width: 768px) {
+            .charts-row {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .period-selector {
+                justify-content: center;
+            }
+        }
+        .period-selector {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .period-btn {
+            padding: 8px 16px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+            .period-btn:hover {
+                background: #f0f0f0;
+                border-color: #667eea;
+            }
+
+            .period-btn.active {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border-color: transparent;
+            }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <a href="/">TechMarket</a>
+            </div>
+            <nav class="nav">
+                <ul>
+                    <li><a href="/">Главная</a></li>
+                    <li><a href="/catalog.html">Каталог</a></li>
+                    <li><a href="/cart.html">Корзина <span id="cart-count">0</span></a></li>
+                    <li><a href="/account.html">Личный кабинет</a></li>
+                    <li><a href="/statistics.html" class="active">Статистика</a></li>
+                    <li><a href="/analytics.html">Аналитика</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container stats-container">
+            <div class="stats-header">
+                <h1>Статистика продаж</h1>
+                <div class="period-selector">
+                    <button class="period-btn active" data-period="all">За всё время</button>
+                    <button class="period-btn" data-period="year">Год</button>
+                    <button class="period-btn" data-period="month">Месяц</button>
+                    <button class="period-btn" data-period="week">Неделя</button>
+                    <button class="period-btn" data-period="day">День</button>
+                </div>
+            </div>
+
+            <div id="stats-content">
+                <div class="text-center">Загрузка статистики...</div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 TechMarket. Все права защищены.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const statsContent = document.getElementById('stats-content');
+            const periodBtns = document.querySelectorAll('.period-btn');
+            let currentPeriod = 'all';
+
+            // Переключение периода
+            periodBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    periodBtns.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentPeriod = this.dataset.period;
+                    loadAllStats();
+                });
+            });
+
+            // Загрузка всей статистики
+            async function loadAllStats() {
+                try {
+                    statsContent.innerHTML = '<div class="text-center">Загрузка статистики...</div>';
+
+                    // Проверка авторизации
+                    const authResponse = await fetch('/api/check-auth');
+                    const authData = await authResponse.json();
+
+                    if (!authData.authenticated) {
+                        statsContent.innerHTML = `
+                            <div class="alert alert-info">
+                                <h2>Для просмотра статистики необходимо авторизоваться</h2>
+                                <a href="/account.html" class="btn">Войти в личный кабинет</a>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    // Загружаем все данные параллельно
+                    const [overview, topProducts, categories, customers] = await Promise.all([
+                        fetch('/api/statistics/overview').then(r => r.json()),
+                        fetch(`/api/statistics/top-products?period=${currentPeriod}&limit=10`).then(r => r.json()),
+                        fetch('/api/statistics/by-category').then(r => r.json()),
+                        fetch('/api/statistics/top-customers').then(r => r.json())
+                    ]);
+
+                    renderStatistics(overview, topProducts, categories, customers);
+
+                } catch (error) {
+                    console.error('Ошибка загрузки статистики:', error);
+                    statsContent.innerHTML = '<div class="alert alert-error">Ошибка загрузки статистики</div>';
+                }
+            }
+
+            // Отрисовка статистики
+            function renderStatistics(overview, topProducts, categories, customers) {
+                // Форматирование дат
+                const firstOrderDate = overview.first_order_date ?
+                    new Date(overview.first_order_date).toLocaleDateString() : 'Нет данных';
+                const lastOrderDate = overview.last_order_date ?
+                    new Date(overview.last_order_date).toLocaleDateString() : 'Нет данных';
+
+                // Находим максимальное значение для прогресс-баров
+                const maxRevenue = Math.max(...topProducts.map(p => p.total_revenue || 0), 1);
+
+                let html = `
+                    <!-- Карточки с основной статистикой -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">💰</div>
+                            <div class="stat-value">${parseFloat(overview.total_revenue || 0).toLocaleString()} ₽</div>
+                            <div class="stat-label">Общая выручка</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon">📦</div>
+                            <div class="stat-value">${overview.total_orders || 0}</div>
+                            <div class="stat-label">Всего заказов</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon">👥</div>
+                            <div class="stat-value">${overview.total_customers || 0}</div>
+                            <div class="stat-label">Покупателей</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon">📊</div>
+                            <div class="stat-value">${parseFloat(overview.avg_order_value || 0).toLocaleString()} ₽</div>
+                            <div class="stat-label">Средний чек</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon">🛍️</div>
+                            <div class="stat-value">${overview.total_items_sold || 0}</div>
+                            <div class="stat-label">Товаров продано</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon">📅</div>
+                            <div class="stat-value">${firstOrderDate}</div>
+                            <div class="stat-label">Первый заказ</div>
+                        </div>
+                    </div>
+
+                    <!-- Статистика по статусам заказов -->
+                    <div class="chart-container" style="margin-bottom: 30px;">
+                        <div class="chart-title">Статусы заказов</div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                `;
+
+                // Добавляем статусы
+                if (overview.byStatus && overview.byStatus.length > 0) {
+                    overview.byStatus.forEach(status => {
+                        const percent = overview.total_orders ?
+                            ((status.count / overview.total_orders) * 100).toFixed(1) : 0;
+
+                        html += `
+                            <div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                    <span>${status.status}</span>
+                                    <span><strong>${status.count}</strong> (${percent}%)</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: ${percent}%;"></div>
+                                </div>
+                                <div style="margin-top: 5px; color: #667eea;">
+                                    ${parseFloat(status.total || 0).toLocaleString()} ₽
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    html += '<div class="text-center">Нет данных о заказах</div>';
+                }
+
+                html += `
+                        </div>
+                    </div>
+
+                    <!-- Топ товаров -->
+                    <div class="stats-table">
+                        <div style="padding: 20px; border-bottom: 1px solid #e0e0e0;">
+                            <h2 style="margin: 0;">Топ продаваемых товаров</h2>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Товар</th>
+                                    <th>Категория</th>
+                                    <th>Цена</th>
+                                    <th>Продано</th>
+                                    <th>Выручка</th>
+                                    <th>Заказов</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                if (topProducts.length > 0) {
+                    topProducts.forEach((product, index) => {
+                        html += `
+                            <tr>
+                                <td>
+                                    <strong>${index + 1}. ${product.name}</strong>
+                                </td>
+                                <td>${product.category || '—'}</td>
+                                <td>${parseFloat(product.price || 0).toLocaleString()} ₽</td>
+                                <td><span class="positive">${product.total_sold || 0}</span></td>
+                                <td><strong>${parseFloat(product.total_revenue || 0).toLocaleString()} ₽</strong></td>
+                                <td>${product.orders_count || 0}</td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    html += '<tr><td colspan="6" class="text-center">Нет данных о продажах</td></tr>';
+                }
+
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Статистика по категориям -->
+                    <div class="stats-table">
+                        <div style="padding: 20px; border-bottom: 1px solid #e0e0e0;">
+                            <h2 style="margin: 0;">Продажи по категориям</h2>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Категория</th>
+                                    <th>Товаров</th>
+                                    <th>Продано</th>
+                                    <th>Выручка</th>
+                                    <th>Средняя цена</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                if (categories.length > 0) {
+                    categories.forEach(cat => {
+                        html += `
+                            <tr>
+                                <td><strong>${cat.category}</strong></td>
+                                <td>${cat.products_count || 0}</td>
+                                <td>${cat.items_sold || 0}</td>
+                                <td><strong>${parseFloat(cat.revenue || 0).toLocaleString()} ₽</strong></td>
+                                <td>${parseFloat(cat.avg_price || 0).toLocaleString()} ₽</td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    html += '<tr><td colspan="5" class="text-center">Нет данных о категориях</td></tr>';
+                }
+
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Лучшие покупатели -->
+                    <div class="stats-table">
+                        <div style="padding: 20px; border-bottom: 1px solid #e0e0e0;">
+                            <h2 style="margin: 0;">Лучшие покупатели</h2>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Покупатель</th>
+                                    <th>Email</th>
+                                    <th>Заказов</th>
+                                    <th>Потрачено</th>
+                                    <th>Последний заказ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                if (customers.length > 0) {
+                    customers.forEach(customer => {
+                        const lastOrder = customer.last_order_date ?
+                            new Date(customer.last_order_date).toLocaleDateString() : '—';
+
+                        html += `
+                            <tr>
+                                <td><strong>${customer.first_name || ''} ${customer.last_name || ''}</strong></td>
+                                <td>${customer.email}</td>
+                                <td>${customer.orders_count || 0}</td>
+                                <td><strong>${parseFloat(customer.total_spent || 0).toLocaleString()} ₽</strong></td>
+                                <td>${lastOrder}</td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    html += '<tr><td colspan="5" class="text-center">Нет данных о покупателях</td></tr>';
+                }
+
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+
+                statsContent.innerHTML = html;
+            }
+
+            // Обновление счетчика корзины
+            async function updateCartCount() {
+                try {
+                    const response = await fetch('/api/cart');
+                    if (response.ok) {
+                        const cart = await response.json();
+                        document.getElementById('cart-count').textContent = cart.count;
+                    }
+                } catch (error) {
+                    console.error('Ошибка обновления счетчика:', error);
+                }
+            }
+
+            // Загружаем статистику при открытии страницы
+            loadAllStats();
+            updateCartCount();
+        });
+    </script>
+</body>
+</html>

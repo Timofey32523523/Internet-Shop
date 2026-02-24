@@ -1,0 +1,291 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Информация о товаре</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .product-detail {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .product-image img {
+            width: 100%;
+            max-height: 500px;
+            object-fit: contain;
+            border-radius: 10px;
+        }
+
+        .product-info h1 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+        }
+
+        .product-price {
+            font-size: 2.5rem;
+            color: #667eea;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .product-old-price {
+            font-size: 1.5rem;
+            color: #999;
+            text-decoration: line-through;
+            margin-left: 15px;
+        }
+
+        .product-attributes {
+            margin: 30px 0;
+            border-top: 1px solid #e0e0e0;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 20px 0;
+        }
+
+        .attribute-row {
+            display: flex;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .attribute-name {
+            width: 150px;
+            font-weight: bold;
+            color: #666;
+        }
+
+        .attribute-value {
+            flex: 1;
+        }
+
+        .product-stock {
+            font-size: 1.1rem;
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+        }
+
+        .in-stock {
+            color: #28a745;
+        }
+
+        .out-of-stock {
+            color: #dc3545;
+        }
+
+        .quantity-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+            .quantity-selector input {
+                width: 80px;
+                padding: 10px;
+                text-align: center;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+            }
+
+        @media (max-width: 768px) {
+            .product-detail {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <a href="/">TechMarket</a>
+            </div>
+            <nav class="nav">
+                <ul>
+                    <li><a href="/">Главная</a></li>
+                    <li><a href="/catalog.html">Каталог</a></li>
+                    <li><a href="/cart.html">Корзина <span id="cart-count">0</span></a></li>
+                    <li><a href="/account.html">Личный кабинет</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <div style="margin-bottom: 20px;">
+                <a href="/catalog.html" class="btn btn-secondary">← Назад в каталог</a>
+            </div>
+
+            <div id="product-detail" class="product-detail">
+                <div class="text-center" style="grid-column: 1/-1;">Загрузка...</div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 TechMarket. Все права защищены.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Получаем ID товара из URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const productId = urlParams.get('id');
+
+            if (!productId) {
+                window.location.href = '/catalog.html';
+                return;
+            }
+
+            const container = document.getElementById('product-detail');
+
+            try {
+                // Загружаем информацию о товаре
+                const response = await fetch(`/api/products/${productId}`);
+
+                if (!response.ok) {
+                    throw new Error('Товар не найден');
+                }
+
+                const product = await response.json();
+
+                // Формируем HTML для отображения
+                const inStock = product.in_stock > 0;
+
+                let attributesHtml = '';
+
+                // Список атрибутов для отображения (5-7 полей)
+                const attributes = [
+                    { name: 'Категория', value: product.category },
+                    { name: 'Бренд', value: product.brand || 'Не указан' },
+                    { name: 'Цвет', value: product.color || 'Не указан' },
+                    { name: 'Вес', value: product.weight ? `${product.weight} кг` : 'Не указан' },
+                    { name: 'Страна производства', value: product.country || 'Не указана' },
+                    { name: 'Артикул', value: `ТОВ-${product.id}` },
+                    { name: 'Дата добавления', value: new Date(product.created_at).toLocaleDateString() }
+                ];
+
+                attributes.forEach(attr => {
+                    attributesHtml += `
+                        <div class="attribute-row">
+                            <div class="attribute-name">${attr.name}:</div>
+                            <div class="attribute-value">${attr.value}</div>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = `
+                    <div class="product-image">
+                        <img src="${product.image_url || 'https://via.placeholder.com/600'}" alt="${product.name}">
+                    </div>
+                    <div class="product-info">
+                        <h1>${product.name}</h1>
+                        <div>
+                            <span class="product-price">${product.price.toLocaleString()} ₽</span>
+                            ${product.old_price ? `<span class="product-old-price">${product.old_price.toLocaleString()} ₽</span>` : ''}
+                        </div>
+
+                        <div class="product-stock ${inStock ? 'in-stock' : 'out-of-stock'}">
+                            ${inStock ? `✓ В наличии: ${product.in_stock} шт.` : '✗ Нет в наличии'}
+                        </div>
+
+                        <div class="product-description">
+                            <h3>Описание</h3>
+                            <p>${product.description || 'Описание отсутствует'}</p>
+                        </div>
+
+                        <div class="product-attributes">
+                            <h3>Характеристики</h3>
+                            ${attributesHtml}
+                        </div>
+
+                        ${inStock ? `
+                            <div class="quantity-selector">
+                                <label for="quantity">Количество:</label>
+                                <input type="number" id="quantity" min="1" max="${product.in_stock}" value="1">
+                            </div>
+
+                            <button class="btn" id="add-to-cart" style="font-size: 1.2rem; padding: 15px 30px;">
+                                Добавить в корзину
+                            </button>
+                        ` : `
+                            <button class="btn" disabled style="font-size: 1.2rem; padding: 15px 30px;">
+                                Нет в наличии
+                            </button>
+                        `}
+                    </div>
+                `;
+
+                // Добавляем обработчик на кнопку добавления
+                if (inStock) {
+                    document.getElementById('add-to-cart').addEventListener('click', async () => {
+                        const quantity = parseInt(document.getElementById('quantity').value);
+
+                        try {
+                            const response = await fetch('/api/cart/add', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ productId, quantity }),
+                            });
+
+                            const result = await response.json();
+
+                            if (response.ok) {
+                                alert('Товар добавлен в корзину');
+                                updateCartCount();
+                            } else {
+                                if (response.status === 401) {
+                                    if (confirm('Для добавления в корзину необходимо войти. Перейти на страницу входа?')) {
+                                        window.location.href = '/account.html';
+                                    }
+                                } else {
+                                    alert(result.error || 'Ошибка при добавлении');
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Ошибка:', error);
+                            alert('Ошибка при добавлении в корзину');
+                        }
+                    });
+                }
+
+            } catch (error) {
+                console.error('Ошибка:', error);
+                container.innerHTML = `
+                    <div class="alert alert-error" style="grid-column: 1/-1;">
+                        Товар не найден или произошла ошибка при загрузке
+                    </div>
+                `;
+            }
+
+            async function updateCartCount() {
+                try {
+                    const response = await fetch('/api/cart');
+                    if (response.ok) {
+                        const cart = await response.json();
+                        document.getElementById('cart-count').textContent = cart.count;
+                    }
+                } catch (error) {
+                    console.error('Ошибка обновления счетчика:', error);
+                }
+            }
+
+            updateCartCount();
+        });
+    </script>
+</body>
+</html>

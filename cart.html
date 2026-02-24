@@ -1,0 +1,330 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Корзина</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .cart-table {
+            width: 100%;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+            .cart-table th {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                text-align: left;
+            }
+
+            .cart-table td {
+                padding: 15px;
+                border-bottom: 1px solid #e0e0e0;
+                vertical-align: middle;
+            }
+
+            .cart-table img {
+                width: 80px;
+                height: 80px;
+                object-fit: cover;
+                border-radius: 8px;
+            }
+
+        .cart-quantity {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+            .cart-quantity input {
+                width: 60px;
+                padding: 5px;
+                text-align: center;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+            }
+
+        .cart-total {
+            margin-top: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: right;
+        }
+
+            .cart-total h3 {
+                font-size: 1.5rem;
+                margin-bottom: 20px;
+            }
+
+            .cart-total .total-price {
+                font-size: 2rem;
+                color: #667eea;
+                font-weight: bold;
+            }
+
+        .empty-cart {
+            text-align: center;
+            padding: 60px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+            .empty-cart h2 {
+                margin-bottom: 20px;
+                color: #666;
+            }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <a href="/">TechMarket</a>
+            </div>
+            <nav class="nav">
+                <ul>
+                    <li><a href="/">Главная</a></li>
+                    <li><a href="/catalog.html">Каталог</a></li>
+                    <li><a href="/cart.html" class="active">Корзина <span id="cart-count">0</span></a></li>
+                    <li><a href="/account.html">Личный кабинет</a></li>
+                    <li><a href="/statistics.html">Статистика</a></li>
+                    <li><a href="/analytics.html">Аналитика</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <h1 style="margin-bottom: 30px;">Корзина</h1>
+
+            <div id="cart-container">
+                <div class="text-center">Загрузка...</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Модальное окно для подтверждения удаления -->
+    <div id="confirm-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Подтверждение</h2>
+            <p>Вы уверены, что хотите удалить этот товар из корзины?</p>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button class="btn btn-secondary" id="cancel-delete">Отмена</button>
+                <button class="btn btn-danger" id="confirm-delete">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 TechMarket. Все права защищены.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const cartContainer = document.getElementById('cart-container');
+            let currentItemId = null;
+
+            // Модальное окно
+            const modal = document.getElementById('confirm-modal');
+            const closeBtn = document.querySelector('.close');
+            const cancelBtn = document.getElementById('cancel-delete');
+            const confirmBtn = document.getElementById('confirm-delete');
+
+            closeBtn.onclick = () => modal.classList.remove('show');
+            cancelBtn.onclick = () => modal.classList.remove('show');
+            window.onclick = (event) => {
+                if (event.target === modal) {
+                    modal.classList.remove('show');
+                }
+            };
+
+            // Загрузка корзины
+            async function loadCart() {
+                try {
+                    const response = await fetch('/api/cart');
+
+                    if (response.status === 401) {
+                        // Не авторизован
+                        cartContainer.innerHTML = `
+                            <div class="empty-cart">
+                                <h2>Для просмотра корзины необходимо войти</h2>
+                                <a href="/account.html" class="btn">Войти в личный кабинет</a>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    const cart = await response.json();
+                    document.getElementById('cart-count').textContent = cart.count;
+
+                    if (cart.items.length === 0) {
+                        cartContainer.innerHTML = `
+                            <div class="empty-cart">
+                                <h2>Ваша корзина пуста</h2>
+                                <p style="margin-bottom: 20px;">Добавьте товары из каталога</p>
+                                <a href="/catalog.html" class="btn">Перейти в каталог</a>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    let html = `
+                        <table class="cart-table">
+                            <thead>
+                                <tr>
+                                    <th>Товар</th>
+                                    <th>Название</th>
+                                    <th>Цена</th>
+                                    <th>Количество</th>
+                                    <th>Сумма</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+
+                    cart.items.forEach(item => {
+                        html += `
+                            <tr data-item-id="${item.id}">
+                                <td>
+                                    <img src="${item.image_url || 'https://via.placeholder.com/80'}" alt="${item.name}">
+                                </td>
+                                <td>
+                                    <strong>${item.name}</strong>
+                                    <br>
+                                    <small>Артикул: ТОВ-${item.product_id}</small>
+                                </td>
+                                <td>${parseFloat(item.price).toLocaleString()} ₽</td>
+                                <td>
+                                    <div class="cart-quantity">
+                                        <button class="btn btn-secondary btn-sm" onclick="updateQuantity(${item.id}, -1)">-</button>
+                                        <input type="number" value="${item.quantity}" min="1" max="${item.in_stock}"
+                                               onchange="updateQuantityInput(${item.id}, this.value)">
+                                        <button class="btn btn-secondary btn-sm" onclick="updateQuantity(${item.id}, 1)">+</button>
+                                    </div>
+                                </td>
+                                <td><strong>${parseFloat(item.total).toLocaleString()} ₽</strong></td>
+                                <td>
+                                    <button class="btn btn-danger btn-sm" onclick="showDeleteModal(${item.id})">Удалить</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    html += `
+                            </tbody>
+                        </table>
+
+                        <div class="cart-total">
+                            <h3>Итого: <span class="total-price">${cart.total.toLocaleString()} ₽</span></h3>
+                            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                                <button class="btn btn-secondary" onclick="clearCart()">Очистить корзину</button>
+                                <a href="/checkout.html" class="btn">Оформить заказ</a>
+                            </div>
+                        </div>
+                    `;
+
+                    cartContainer.innerHTML = html;
+
+                } catch (error) {
+                    console.error('Ошибка загрузки корзины:', error);
+                    cartContainer.innerHTML = '<div class="alert alert-error">Ошибка загрузки корзины</div>';
+                }
+            }
+
+            // Обновление количества
+            window.updateQuantity = async function(itemId, change) {
+                const row = document.querySelector(`tr[data-item-id="${itemId}"]`);
+                const input = row.querySelector('input');
+                const newValue = parseInt(input.value) + change;
+
+                if (newValue < 1) return;
+
+                await updateQuantityInput(itemId, newValue);
+            };
+
+            window.updateQuantityInput = async function(itemId, newValue) {
+                try {
+                    const response = await fetch(`/api/cart/update/${itemId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ quantity: parseInt(newValue) }),
+                    });
+
+                    if (response.ok) {
+                        loadCart();
+                    } else {
+                        alert('Ошибка при обновлении количества');
+                    }
+                } catch (error) {
+                    console.error('Ошибка:', error);
+                    alert('Ошибка при обновлении количества');
+                }
+            };
+
+            // Показ модального окна удаления
+            window.showDeleteModal = function(itemId) {
+                currentItemId = itemId;
+                modal.classList.add('show');
+            };
+
+            // Подтверждение удаления
+            confirmBtn.onclick = async function() {
+                if (currentItemId) {
+                    try {
+                        const response = await fetch(`/api/cart/remove/${currentItemId}`, {
+                            method: 'DELETE',
+                        });
+
+                        if (response.ok) {
+                            loadCart();
+                            modal.classList.remove('show');
+                        } else {
+                            alert('Ошибка при удалении товара');
+                        }
+                    } catch (error) {
+                        console.error('Ошибка:', error);
+                        alert('Ошибка при удалении товара');
+                    }
+                }
+            };
+
+            // Очистка корзины
+            window.clearCart = async function() {
+                if (!confirm('Вы уверены, что хотите очистить корзину?')) return;
+
+                try {
+                    const response = await fetch('/api/cart/clear', {
+                        method: 'DELETE',
+                    });
+
+                    if (response.ok) {
+                        loadCart();
+                    } else {
+                        alert('Ошибка при очистке корзины');
+                    }
+                } catch (error) {
+                    console.error('Ошибка:', error);
+                    alert('Ошибка при очистке корзины');
+                }
+            };
+
+            // Загрузка корзины при открытии страницы
+            loadCart();
+        });
+    </script>
+</body>
+</html>
